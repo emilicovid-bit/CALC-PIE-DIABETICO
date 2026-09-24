@@ -47,6 +47,7 @@
   .btns-accion{display:flex; gap:10px; margin-top:18px;}
   .btns-accion button{flex:1; padding:10px; border:none; border-radius:6px; font-size:.95em; cursor:pointer; color:#fff;}
   .btn-imprimir{background:var(--azul);}
+  .btn-word{background:#6c3483;}
   .btn-reiniciar{background:#7b7d7d;}
   textarea#observaciones{width:100%; min-height:60px; border:1px solid var(--borde); border-radius:4px; padding:8px; font-family:inherit;}
   footer{margin-top:20px; font-size:.75em; color:#888; text-align:center; border-top:1px solid var(--borde); padding-top:10px;}
@@ -176,10 +177,9 @@
 
   <div class="btns-accion">
     <button class="btn-imprimir" onclick="window.print()">Imprimir / Guardar como PDF</button>
+    <button class="btn-word" id="btnWord" onclick="generarWord()">Guardar como Word</button>
     <button class="btn-reiniciar" onclick="reiniciarTodo()">Reiniciar formulario</button>
-  </div>
-
-  <!-- ===================== HOJA CLÍNICA APARTE (solo personal de salud, NO entregar al paciente) ===================== -->
+  </div> (solo personal de salud, NO entregar al paciente) ===================== -->
   <section class="pagina-clinica">
     <div class="banner-confidencial">USO EXCLUSIVO DEL PERSONAL DE SALUD - NO ENTREGAR ESTA HOJA AL PACIENTE</div>
     <h2 style="margin-top:0;">Sugerencia terapéutica según clasificación</h2>
@@ -214,6 +214,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <script>
 // ============ DATOS ============
 const preguntasEntrevista = [
@@ -303,6 +304,8 @@ function setFactor(idx, valor, btn){
   opciones[0].classList.remove('activo-si');
   opciones[1].classList.remove('activo-no');
   if(valor){ opciones[0].classList.add('activo-si'); } else { opciones[1].classList.add('activo-no'); }
+  const itemTexto = btn.closest('.item').querySelector('.texto');
+  itemTexto.setAttribute('data-resp', valor ? 'PRESENTE' : 'AUSENTE');
   calcularTodo();
 }
 
@@ -462,6 +465,200 @@ function calcularTodo(){
 function reiniciarTodo(){
   if(confirm('¿Reiniciar todo el formulario? Se perderán los datos ingresados.')){
     location.reload();
+  }
+}
+
+// ============ EXPORTACIÓN A WORD ============
+let __downloadsCap = null;
+(async function initDescargas(){
+  try{
+    if(typeof claude !== 'undefined' && claude.use){
+      __downloadsCap = await claude.use('downloads');
+    }
+  }catch(e){ __downloadsCap = null; }
+  // Si no hay capacidad de Claude (archivo abierto directamente en el navegador),
+  // el botón sigue visible y usa la descarga estándar del navegador como respaldo.
+})();
+
+function extraerItems(contenedorId){
+  const items = document.querySelectorAll('#'+contenedorId+' .item');
+  const resultado = [];
+  items.forEach(it=>{
+    const texto = it.querySelector('.texto').textContent.trim();
+    const resp = it.querySelector('.texto').getAttribute('data-resp') || '(sin responder)';
+    resultado.push({texto, resp});
+  });
+  return resultado;
+}
+
+function extraerLista(selector){
+  return Array.from(document.querySelectorAll(selector)).map(li=>li.textContent.trim());
+}
+
+async function generarWord(){
+  if(typeof docx === 'undefined'){
+    alert('La librería de generación de Word no cargó correctamente. Verifique su conexión a internet e intente nuevamente.');
+    return;
+  }
+
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
+          WidthType, BorderStyle, ShadingType } = docx;
+
+  const bordeTabla = {
+    top:{style:BorderStyle.SINGLE, size:2, color:"CCD1D1"},
+    bottom:{style:BorderStyle.SINGLE, size:2, color:"CCD1D1"},
+    left:{style:BorderStyle.SINGLE, size:2, color:"CCD1D1"},
+    right:{style:BorderStyle.SINGLE, size:2, color:"CCD1D1"}
+  };
+
+  function celda(texto, opts={}){
+    return new TableCell({
+      borders: bordeTabla,
+      shading: opts.encabezado ? {type:ShadingType.CLEAR, fill:"D6EAF8"} : undefined,
+      children:[ new Paragraph({ children:[ new TextRun({text: texto, bold: !!opts.encabezado}) ] }) ]
+    });
+  }
+
+  function filaItem(texto, resp){
+    return new Paragraph({
+      children:[ new TextRun({text: texto + ": "}), new TextRun({text: resp, bold:true}) ]
+    });
+  }
+
+  function bullets(items){
+    return items.map(t => new Paragraph({text: t, bullet:{level:0}}));
+  }
+
+  // --- Datos ---
+  const nombre = document.getElementById('pNombre').value || '(sin nombre)';
+  const edad = document.getElementById('pEdad').value || '-';
+  const fecha = document.getElementById('pFecha').value || '-';
+  const hc = document.getElementById('pHC').value || '-';
+  const tDM = document.getElementById('pDM').value || '-';
+  const tDolor = document.getElementById('pDolor').value || '-';
+  const observaciones = document.getElementById('observaciones').value || '';
+
+  const dn4Entrevista = extraerItems('dn4-entrevista');
+  const dn4Examen = extraerItems('dn4-examen');
+  const monoDer = extraerItems('mono-derecho');
+  const monoIzq = extraerItems('mono-izquierdo');
+  const factores = extraerItems('factores-riesgo');
+  const consejeriaItems = extraerLista('.consejeria-box li');
+  const alarmaItems = extraerLista('.alarma-box li');
+
+  const resDn4Box = document.getElementById('dn4-resultado').textContent.trim();
+  const resMonoBox = document.getElementById('mono-resultado').textContent.trim();
+  const resRiesgoBox = document.getElementById('riesgo-resultado').textContent.trim();
+  const conducta = document.getElementById('conducta-sugerida').textContent.trim();
+  const dosisDn4Texto = document.getElementById('dosis-dn4-texto').textContent.trim();
+  const dosisRiesgoTexto = document.getElementById('dosis-riesgo-texto').textContent.trim();
+  const datosRefInterna = document.getElementById('datos-referencia-interna').textContent.trim();
+  const mostrarTablaDosis = document.getElementById('tabla-dosis-dn4').style.display !== 'none';
+
+  const hijos = [];
+
+  hijos.push(new Paragraph({text:'Evaluación de Neuropatía Diabética Periférica Dolorosa (NDPD)', heading: HeadingLevel.HEADING_1}));
+  hijos.push(new Paragraph({text:'DN4 + Monofilamento Semmes-Weinstein 10g + Riesgo IWGDF'}));
+
+  hijos.push(new Table({
+    width:{size:100, type:WidthType.PERCENTAGE},
+    rows:[
+      new TableRow({children:[celda('Nombre', {encabezado:true}), celda(nombre)]}),
+      new TableRow({children:[celda('Edad', {encabezado:true}), celda(edad)]}),
+      new TableRow({children:[celda('Fecha', {encabezado:true}), celda(fecha)]}),
+      new TableRow({children:[celda('HC / Cédula', {encabezado:true}), celda(hc)]}),
+      new TableRow({children:[celda('Tiempo de evolución DM', {encabezado:true}), celda(tDM)]}),
+      new TableRow({children:[celda('Tiempo de dolor', {encabezado:true}), celda(tDolor)]})
+    ]
+  }));
+
+  hijos.push(new Paragraph({text:'1. Cuestionario DN4', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  dn4Entrevista.concat(dn4Examen).forEach(it=>hijos.push(filaItem(it.texto, it.resp)));
+  hijos.push(new Paragraph({text: resDn4Box, spacing:{before:100}}));
+
+  hijos.push(new Paragraph({text:'2. Monofilamento Semmes-Weinstein 10g', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(new Paragraph({text:'Pie derecho:', bold:true}));
+  monoDer.forEach(it=>hijos.push(filaItem(it.texto, it.resp)));
+  hijos.push(new Paragraph({text:'Pie izquierdo:', bold:true}));
+  monoIzq.forEach(it=>hijos.push(filaItem(it.texto, it.resp)));
+  hijos.push(new Paragraph({text: resMonoBox, spacing:{before:100}}));
+
+  hijos.push(new Paragraph({text:'3. Factores de riesgo adicionales (IWGDF)', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  factores.forEach(it=>hijos.push(filaItem(it.texto, it.resp)));
+  hijos.push(new Paragraph({text: resRiesgoBox, spacing:{before:100}}));
+
+  hijos.push(new Paragraph({text:'Resumen e interpretación clínica', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(new Table({
+    width:{size:100, type:WidthType.PERCENTAGE},
+    rows:[
+      new TableRow({children:[celda('Parámetro', {encabezado:true}), celda('Resultado', {encabezado:true}), celda('Interpretación', {encabezado:true})]}),
+      new TableRow({children:[celda('DN4'), celda(document.getElementById('res-dn4').textContent), celda(document.getElementById('res-dn4-int').textContent)]}),
+      new TableRow({children:[celda('Monofilamento'), celda(document.getElementById('res-mono').textContent), celda(document.getElementById('res-mono-int').textContent)]}),
+      new TableRow({children:[celda('Riesgo IWGDF'), celda(document.getElementById('res-riesgo').textContent), celda(document.getElementById('res-riesgo-int').textContent)]})
+    ]
+  }));
+  hijos.push(new Paragraph({children:[new TextRun({text:'Conducta sugerida: ', bold:true}), new TextRun({text: conducta})], spacing:{before:100}}));
+
+  if(observaciones){
+    hijos.push(new Paragraph({children:[new TextRun({text:'Observaciones: ', bold:true}), new TextRun({text: observaciones})], spacing:{before:100}}));
+  }
+
+  hijos.push(new Paragraph({text:'Consejería - Cuidado diario del pie', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(...bullets(consejeriaItems));
+
+  hijos.push(new Paragraph({text:'Signos de alarma - Acuda de inmediato si presenta', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(...bullets(alarmaItems));
+
+  // ---- Salto de página: hoja clínica aparte ----
+  hijos.push(new Paragraph({
+    pageBreakBefore:true,
+    children:[ new TextRun({text:'USO EXCLUSIVO DEL PERSONAL DE SALUD — NO ENTREGAR ESTA HOJA AL PACIENTE', bold:true, color:"FFFFFF"}) ],
+    shading:{type:ShadingType.CLEAR, fill:"C0392B"}
+  }));
+
+  hijos.push(new Paragraph({text:'Sugerencia terapéutica según clasificación', heading: HeadingLevel.HEADING_1, spacing:{before:200}}));
+
+  hijos.push(new Paragraph({text:'Manejo farmacológico del dolor neuropático (según DN4)', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(new Paragraph({text: dosisDn4Texto}));
+  if(mostrarTablaDosis){
+    hijos.push(new Table({
+      width:{size:100, type:WidthType.PERCENTAGE},
+      rows:[
+        new TableRow({children:[celda('Fármaco', {encabezado:true}), celda('Dosis inicial → objetivo', {encabezado:true}), celda('Ajuste renal', {encabezado:true}), celda('Observaciones', {encabezado:true})]}),
+        new TableRow({children:[celda('Gabapentina'), celda('300mg/noche → 900-1800mg/día en 3 tomas'), celda('Sí, si ClCr <60'), celda('Primera opción costo-efectiva; sedación, mareo')]}),
+        new TableRow({children:[celda('Duloxetina'), celda('30mg/día → 60mg/día'), celda('Evitar si ClCr <30'), celda('Náusea, insomnio; útil si ánimo deprimido asociado')]}),
+        new TableRow({children:[celda('Pregabalina'), celda('75mg c/12h → 150-300mg/día'), celda('Sí, si ClCr <60'), celda('Edema, ganancia de peso, somnolencia')]})
+      ]
+    }));
+    hijos.push(new Paragraph({text:'Reevaluar respuesta a las 4-6 semanas antes de declarar falla terapéutica. Si falla monoterapia: combinar gabapentinoide + duloxetina antes de escalar a opioides (evitar opioides fuertes, Grado E).', spacing:{before:100}}));
+  }
+
+  hijos.push(new Paragraph({text:'Plan según categoría de riesgo IWGDF', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(new Paragraph({text: dosisRiesgoTexto}));
+
+  hijos.push(new Paragraph({text:'Datos del paciente (referencia interna)', heading: HeadingLevel.HEADING_2, spacing:{before:200}}));
+  hijos.push(new Paragraph({text: datosRefInterna}));
+
+  const documento = new Document({ sections:[{ children: hijos }] });
+
+  try{
+    const blob = await Packer.toBlob(documento);
+    const nombreArchivo = 'Reporte_NDPD_' + nombre.replace(/[^a-zA-Z0-9_-]+/g,'_') + '.docx';
+    if(__downloadsCap){
+      await __downloadsCap.save({ filename: nombreArchivo, data: blob });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+  }catch(e){
+    if(e && e.code === 'declined'){ return; }
+    alert('No se pudo generar el documento Word. Intente nuevamente.');
   }
 }
 

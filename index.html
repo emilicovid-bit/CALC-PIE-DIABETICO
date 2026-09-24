@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora NDPD - DN4 + Monofilamento</title>
+<style>
+  :root{
+    --azul:#1a5276; --azul-claro:#d6eaf8; --gris:#f4f6f7; --borde:#ccd1d1;
+    --verde:#1e8449; --amarillo:#b7950b; --naranja:#ca6f1e; --rojo:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Arial, Helvetica, sans-serif; background:var(--gris); margin:0; padding:0; color:#1c2833;}
+  .contenedor{max-width:900px; margin:0 auto; background:#fff; padding:24px; box-shadow:0 0 8px rgba(0,0,0,.1);}
+  header{border-bottom:3px solid var(--azul); padding-bottom:10px; margin-bottom:18px;}
+  header h1{color:var(--azul); font-size:1.4em; margin:0 0 4px 0;}
+  header p{margin:0; font-size:.85em; color:#555;}
+  .datos-paciente{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; background:var(--azul-claro); padding:12px; border-radius:6px; margin-bottom:20px;}
+  .datos-paciente label{display:block; font-size:.8em; font-weight:bold; color:var(--azul); margin-bottom:2px;}
+  .datos-paciente input{width:100%; padding:5px; border:1px solid var(--borde); border-radius:4px;}
+  section{margin-bottom:22px;}
+  h2{color:var(--azul); font-size:1.1em; border-left:4px solid var(--azul); padding-left:8px; margin-bottom:10px;}
+  .subtitulo{font-size:.82em; color:#555; margin:-6px 0 10px 8px;}
+  .item{display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid #eee;}
+  .item:nth-child(even){background:#fafafa;}
+  .item span.texto{flex:1; font-size:.92em;}
+  .opciones{display:flex; gap:6px;}
+  .opciones button{padding:5px 14px; border:1px solid var(--borde); background:#fff; border-radius:4px; cursor:pointer; font-size:.85em;}
+  .opciones button.activo-si{background:var(--rojo); color:#fff; border-color:var(--rojo);}
+  .opciones button.activo-no{background:#5d6d7e; color:#fff; border-color:#5d6d7e;}
+  .pie-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .pie-svg-cont{text-align:center;}
+  .pie-svg-cont p{font-size:.8em; color:#555; margin:4px 0 0 0;}
+  .puntos-lista{font-size:.85em;}
+  .puntos-lista .item span.texto{font-size:.85em;}
+  .resultado-box{padding:14px; border-radius:6px; margin-top:8px; font-weight:bold; font-size:1.05em;}
+  .res-verde{background:#eafaf1; border-left:5px solid var(--verde); color:var(--verde);}
+  .res-amarillo{background:#fef9e7; border-left:5px solid var(--amarillo); color:var(--amarillo);}
+  .res-naranja{background:#fdf0e6; border-left:5px solid var(--naranja); color:var(--naranja);}
+  .res-rojo{background:#fdedec; border-left:5px solid var(--rojo); color:var(--rojo);}
+  .detalle{font-weight:normal; font-size:.85em; margin-top:6px; color:#333;}
+  .resumen-final{border:2px solid var(--azul); border-radius:8px; padding:16px; background:#fbfcfc;}
+  .resumen-final h2{margin-top:0;}
+  table.resumen-tabla{width:100%; border-collapse:collapse; font-size:.88em; margin-top:8px;}
+  table.resumen-tabla th, table.resumen-tabla td{border:1px solid var(--borde); padding:6px 8px; text-align:left;}
+  table.resumen-tabla th{background:var(--azul-claro); color:var(--azul);}
+  .btns-accion{display:flex; gap:10px; margin-top:18px;}
+  .btns-accion button{flex:1; padding:10px; border:none; border-radius:6px; font-size:.95em; cursor:pointer; color:#fff;}
+  .btn-imprimir{background:var(--azul);}
+  .btn-reiniciar{background:#7b7d7d;}
+  textarea#observaciones{width:100%; min-height:60px; border:1px solid var(--borde); border-radius:4px; padding:8px; font-family:inherit;}
+  footer{margin-top:20px; font-size:.75em; color:#888; text-align:center; border-top:1px solid var(--borde); padding-top:10px;}
+  .consejeria-box{background:#eafaf1; border:1px solid var(--verde); border-radius:6px; padding:14px; margin-bottom:12px;}
+  .consejeria-box h3{color:var(--verde); margin:0 0 8px 0; font-size:1em;}
+  .consejeria-box ul{margin:0; padding-left:20px; font-size:.88em; line-height:1.5;}
+  .alarma-box{background:#fdedec; border:1px solid var(--rojo); border-radius:6px; padding:14px;}
+  .alarma-box h3{color:var(--rojo); margin:0 0 8px 0; font-size:1em;}
+  .alarma-box ul{margin:0; padding-left:20px; font-size:.88em; line-height:1.5;}
+  .pagina-clinica{page-break-before:always; border:2px dashed var(--rojo); border-radius:8px; padding:16px; background:#fffdfa;}
+  .pagina-clinica .banner-confidencial{background:var(--rojo); color:#fff; text-align:center; font-weight:bold; padding:8px; border-radius:4px; margin-bottom:14px; font-size:.9em;}
+  .tabla-dosis{width:100%; border-collapse:collapse; font-size:.85em; margin:10px 0;}
+  .tabla-dosis th, .tabla-dosis td{border:1px solid var(--borde); padding:6px 8px; text-align:left;}
+  .tabla-dosis th{background:var(--azul-claro); color:var(--azul);}
+  .bloque-terapeutico{margin-bottom:16px;}
+  .bloque-terapeutico h3{color:var(--azul); font-size:.95em; border-bottom:1px solid var(--borde); padding-bottom:4px;}
+  @media print{
+    body{background:#fff;}
+    .contenedor{box-shadow:none; padding:0;}
+    .btns-accion, .opciones button{display:none;}
+    .opciones{display:none;}
+    .item span.texto::after{content: attr(data-resp); font-weight:bold; margin-left:8px;}
+    section{page-break-inside:avoid;}
+    .pagina-clinica{border:none; page-break-before:always;}
+  }
+</style>
+</head>
+<body>
+<div class="contenedor">
+
+  <header>
+    <h1>Evaluación de Neuropatía Diabética Periférica Dolorosa (NDPD)</h1>
+    <p>DN4 (dolor neuropático) + Monofilamento Semmes-Weinstein 10g + Estratificación de riesgo de pie diabético (IWGDF)</p>
+  </header>
+
+  <div class="datos-paciente">
+    <div><label>Nombre del paciente</label><input type="text" id="pNombre"></div>
+    <div><label>Edad</label><input type="number" id="pEdad"></div>
+    <div><label>Fecha</label><input type="date" id="pFecha"></div>
+    <div><label>Historia clínica / cédula</label><input type="text" id="pHC"></div>
+    <div><label>Tiempo de evolución DM</label><input type="text" id="pDM" placeholder="ej. 1.5 años"></div>
+    <div><label>Tiempo de dolor</label><input type="text" id="pDolor" placeholder="ej. >1 año"></div>
+  </div>
+
+  <!-- ===================== DN4 ===================== -->
+  <section>
+    <h2>1. Cuestionario DN4 (Douleur Neuropathique en 4 questions)</h2>
+    <p class="subtitulo">Marque "Sí" en cada ítem presente. Puntaje ≥4/10 sugiere componente de dolor neuropático (sensibilidad 82.9%, especificidad 89.9%).</p>
+
+    <div id="dn4-entrevista"></div>
+    <div id="dn4-examen"></div>
+
+    <div class="resultado-box" id="dn4-resultado">Puntaje DN4: 0/10</div>
+  </section>
+
+  <!-- ===================== MONOFILAMENTO ===================== -->
+  <section>
+    <h2>2. Monofilamento Semmes-Weinstein 10g</h2>
+    <p class="subtitulo">Evalúe los 4 puntos plantares clásicos en cada pie (1er ortejo, cabezas del 1°, 3° y 5° metatarsiano). Marque si el paciente <b>NO percibe</b> el monofilamento.</p>
+
+    <div class="pie-grid">
+      <div>
+        <b>Pie derecho</b>
+        <div id="mono-derecho"></div>
+      </div>
+      <div>
+        <b>Pie izquierdo</b>
+        <div id="mono-izquierdo"></div>
+      </div>
+    </div>
+
+    <div class="resultado-box" id="mono-resultado">Puntos sin percepción: 0/8</div>
+  </section>
+
+  <!-- ===================== FACTORES DE RIESGO ADICIONALES (IWGDF) ===================== -->
+  <section>
+    <h2>3. Factores de riesgo adicionales (estratificación IWGDF)</h2>
+    <div id="factores-riesgo"></div>
+    <div class="resultado-box" id="riesgo-resultado">Categoría de riesgo IWGDF: —</div>
+  </section>
+
+  <!-- ===================== RESUMEN ===================== -->
+  <section class="resumen-final">
+    <h2>Resumen e interpretación clínica</h2>
+    <table class="resumen-tabla">
+      <tr><th>Parámetro</th><th>Resultado</th><th>Interpretación</th></tr>
+      <tr><td>DN4</td><td id="res-dn4">-</td><td id="res-dn4-int">-</td></tr>
+      <tr><td>Monofilamento</td><td id="res-mono">-</td><td id="res-mono-int">-</td></tr>
+      <tr><td>Riesgo IWGDF</td><td id="res-riesgo">-</td><td id="res-riesgo-int">-</td></tr>
+    </table>
+    <p style="margin-top:10px;"><b>Conducta sugerida:</b></p>
+    <p id="conducta-sugerida" style="font-size:.9em;">Complete la evaluación para generar recomendación.</p>
+
+    <label style="font-size:.85em; font-weight:bold; color:var(--azul); display:block; margin-top:10px;">Observaciones adicionales</label>
+    <textarea id="observaciones" placeholder="Hallazgos adicionales, plan farmacológico, próximo control..."></textarea>
+  </section>
+
+  <!-- ===================== CONSEJERÍA Y ALARMA (misma hoja del reporte, apta para el paciente) ===================== -->
+  <section>
+    <div class="consejeria-box">
+      <h3>Consejería - Cuidado diario del pie</h3>
+      <ul>
+        <li>Revise sus pies todos los días (use un espejo si no puede ver la planta).</li>
+        <li>No camine descalzo, ni siquiera en casa.</li>
+        <li>Use calzado cerrado, cómodo, sin costuras internas; revise el interior antes de ponérselo.</li>
+        <li>Lave los pies con agua tibia (verifique la temperatura con la mano, no con el pie) y seque bien, especialmente entre los dedos.</li>
+        <li>Hidrate la piel de los pies, evitando la zona entre los dedos.</li>
+        <li>Corte las uñas en línea recta, sin dejarlas demasiado cortas.</li>
+        <li>No use bolsas de agua caliente, cobijas eléctricas ni acerque los pies directamente al fuego.</li>
+        <li>Mantenga el control de su glucosa según las indicaciones de su médico.</li>
+        <li>Acuda a sus controles periódicos de revisión de pie, aunque no sienta dolor.</li>
+      </ul>
+    </div>
+    <div class="alarma-box">
+      <h3>Signos de alarma - Acuda de inmediato si presenta</h3>
+      <ul>
+        <li>Herida, ampolla o úlcera en el pie, por pequeña que sea.</li>
+        <li>Enrojecimiento, calor local o hinchazón en el pie o los dedos.</li>
+        <li>Secreción, pus o mal olor.</li>
+        <li>Cambio de color en la piel (muy pálida, morada o negra).</li>
+        <li>Dolor que empeora de forma repentina, o aparición de fiebre.</li>
+        <li>Pérdida de sensibilidad que avanza rápidamente en pocos días.</li>
+        <li>Uña encarnada con signos de infección.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="btns-accion">
+    <button class="btn-imprimir" onclick="window.print()">Imprimir / Guardar como PDF</button>
+    <button class="btn-reiniciar" onclick="reiniciarTodo()">Reiniciar formulario</button>
+  </div>
+
+  <!-- ===================== HOJA CLÍNICA APARTE (solo personal de salud, NO entregar al paciente) ===================== -->
+  <section class="pagina-clinica">
+    <div class="banner-confidencial">USO EXCLUSIVO DEL PERSONAL DE SALUD - NO ENTREGAR ESTA HOJA AL PACIENTE</div>
+    <h2 style="margin-top:0;">Sugerencia terapéutica según clasificación</h2>
+
+    <div class="bloque-terapeutico">
+      <h3>Manejo farmacológico del dolor neuropático (según DN4)</h3>
+      <div id="dosis-dn4-texto" style="font-size:.88em; margin-bottom:6px;">Complete el DN4 para generar sugerencia.</div>
+      <table class="tabla-dosis" id="tabla-dosis-dn4" style="display:none;">
+        <tr><th>Fármaco</th><th>Dosis inicial → objetivo</th><th>Ajuste renal</th><th>Observaciones</th></tr>
+        <tr><td>Gabapentina</td><td>300mg/noche → 900-1800mg/día en 3 tomas</td><td>Sí, si ClCr &lt;60</td><td>Primera opción costo-efectiva; sedación, mareo</td></tr>
+        <tr><td>Duloxetina</td><td>30mg/día → 60mg/día</td><td>Evitar si ClCr &lt;30</td><td>Náusea, insomnio; útil si ánimo deprimido asociado</td></tr>
+        <tr><td>Pregabalina</td><td>75mg c/12h → 150-300mg/día</td><td>Sí, si ClCr &lt;60</td><td>Edema, ganancia de peso, somnolencia</td></tr>
+      </table>
+      <p style="font-size:.82em; color:#555;">Reevaluar respuesta a las 4-6 semanas antes de declarar falla terapéutica. Si falla monoterapia: combinar gabapentinoide + duloxetina antes de escalar a opioides (evitar opioides fuertes, Grado E).</p>
+    </div>
+
+    <div class="bloque-terapeutico">
+      <h3>Plan según categoría de riesgo IWGDF</h3>
+      <div id="dosis-riesgo-texto" style="font-size:.88em;">Complete el monofilamento y los factores de riesgo para generar plan.</div>
+    </div>
+
+    <div class="bloque-terapeutico">
+      <h3>Datos del paciente (referencia interna)</h3>
+      <p style="font-size:.85em;" id="datos-referencia-interna">-</p>
+    </div>
+  </section>
+
+  <footer>
+    Herramienta clínica de apoyo diagnóstico. DN4: Bouhassira et al. Pain 2005. IWGDF Guidelines on prevention of foot ulcers 2023.<br>
+    Uso exclusivo por personal de salud. No sustituye el juicio clínico.
+  </footer>
+
+</div>
+
+<script>
+// ============ DATOS ============
+const preguntasEntrevista = [
+  "¿El dolor tiene sensación de quemadura?",
+  "¿El dolor se acompaña de sensación de frío doloroso?",
+  "¿El dolor se acompaña de sensación de descargas eléctricas?",
+  "¿El dolor se asocia con hormigueo (parestesias)?",
+  "¿El dolor se asocia con sensación de alfileres y agujas?",
+  "¿El dolor se asocia con entumecimiento (adormecimiento)?",
+  "¿El dolor se asocia con picazón (prurito)?"
+];
+const preguntasExamen = [
+  "Hipoestesia al tacto en la zona dolorosa",
+  "Hipoestesia al pinchazo en la zona dolorosa",
+  "El roce (cepillo) provoca o aumenta el dolor (alodinia)"
+];
+
+const puntosMonofilamento = [
+  "1er ortejo (hallux)",
+  "Cabeza 1er metatarsiano",
+  "Cabeza 3er metatarsiano",
+  "Cabeza 5to metatarsiano"
+];
+
+const factoresRiesgo = [
+  {texto:"Antecedente de úlcera plantar previa", peso:"mayor"},
+  {texto:"Antecedente de amputación menor/mayor", peso:"mayor"},
+  {texto:"Enfermedad arterial periférica (pulsos ausentes/débiles)", peso:"mayor"},
+  {texto:"Deformidad estructural del pie (Charcot, hallux valgus severo, dedos en garra)", peso:"mayor"},
+  {texto:"Enfermedad renal crónica (diálisis)", peso:"menor"},
+  {texto:"Alteración visual significativa", peso:"menor"},
+  {texto:"Vive solo / sin apoyo para autocuidado", peso:"menor"}
+];
+
+// ============ ESTADO ============
+let estado = {
+  dn4Entrevista: Array(preguntasEntrevista.length).fill(null),
+  dn4Examen: Array(preguntasExamen.length).fill(null),
+  monoDer: Array(puntosMonofilamento.length).fill(null),
+  monoIzq: Array(puntosMonofilamento.length).fill(null),
+  factores: Array(factoresRiesgo.length).fill(false)
+};
+
+// ============ RENDER ============
+function crearItemSiNo(texto, idx, grupo, contenedorId){
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<span class="texto">${texto}</span>
+    <div class="opciones">
+      <button onclick="setRespuesta('${grupo}', ${idx}, true, this)">Sí</button>
+      <button onclick="setRespuesta('${grupo}', ${idx}, false, this)">No</button>
+    </div>`;
+  document.getElementById(contenedorId).appendChild(div);
+}
+
+preguntasEntrevista.forEach((t,i)=>crearItemSiNo(t, i, 'dn4Entrevista', 'dn4-entrevista'));
+preguntasExamen.forEach((t,i)=>crearItemSiNo(t, i, 'dn4Examen', 'dn4-examen'));
+puntosMonofilamento.forEach((t,i)=>crearItemSiNo("No percibe: "+t, i, 'monoDer', 'mono-derecho'));
+puntosMonofilamento.forEach((t,i)=>crearItemSiNo("No percibe: "+t, i, 'monoIzq', 'mono-izquierdo'));
+
+factoresRiesgo.forEach((f,i)=>{
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<span class="texto">${f.texto} <small style="color:#888;">(${f.peso})</small></span>
+    <div class="opciones">
+      <button onclick="setFactor(${i}, true, this)">Presente</button>
+      <button onclick="setFactor(${i}, false, this)">Ausente</button>
+    </div>`;
+  document.getElementById('factores-riesgo').appendChild(div);
+});
+
+// ============ LÓGICA ============
+function setRespuesta(grupo, idx, valor, btn){
+  estado[grupo][idx] = valor;
+  const opciones = btn.parentElement.children;
+  opciones[0].classList.remove('activo-si');
+  opciones[1].classList.remove('activo-no');
+  if(valor){ opciones[0].classList.add('activo-si'); } else { opciones[1].classList.add('activo-no'); }
+  const itemTexto = btn.closest('.item').querySelector('.texto');
+  itemTexto.setAttribute('data-resp', valor ? 'SÍ' : 'NO');
+  calcularTodo();
+}
+
+function setFactor(idx, valor, btn){
+  estado.factores[idx] = valor;
+  const opciones = btn.parentElement.children;
+  opciones[0].classList.remove('activo-si');
+  opciones[1].classList.remove('activo-no');
+  if(valor){ opciones[0].classList.add('activo-si'); } else { opciones[1].classList.add('activo-no'); }
+  calcularTodo();
+}
+
+function calcularTodo(){
+  // --- DN4 ---
+  const respondidasEntrevista = estado.dn4Entrevista.filter(v=>v!==null).length;
+  const respondidasExamen = estado.dn4Examen.filter(v=>v!==null).length;
+  const dn4Total = estado.dn4Entrevista.filter(v=>v===true).length + estado.dn4Examen.filter(v=>v===true).length;
+  const dn4Completo = (respondidasEntrevista === preguntasEntrevista.length) && (respondidasExamen === preguntasExamen.length);
+
+  const dn4Box = document.getElementById('dn4-resultado');
+  let dn4Interpretacion = '';
+  if(!dn4Completo){
+    dn4Box.className = 'resultado-box';
+    dn4Box.style.background = '#f4f6f7';
+    dn4Box.style.color = '#555';
+    dn4Box.innerHTML = `Puntaje DN4: ${dn4Total}/10 <span class="detalle">(cuestionario incompleto)</span>`;
+  } else if(dn4Total >= 4){
+    dn4Box.className = 'resultado-box res-rojo';
+    dn4Interpretacion = 'Componente de dolor neuropático confirmado';
+    dn4Box.innerHTML = `Puntaje DN4: ${dn4Total}/10 <div class="detalle">≥4/10 → ${dn4Interpretacion} (Se: 82.9%, Sp: 89.9%)</div>`;
+  } else {
+    dn4Box.className = 'resultado-box res-verde';
+    dn4Interpretacion = 'Poco probable componente neuropático puro; considerar otras causas de dolor';
+    dn4Box.innerHTML = `Puntaje DN4: ${dn4Total}/10 <div class="detalle">&lt;4/10 → ${dn4Interpretacion}</div>`;
+  }
+
+  // --- Monofilamento ---
+  const monoTotal = estado.monoDer.filter(v=>v===true).length + estado.monoIzq.filter(v=>v===true).length;
+  const monoRespondidas = estado.monoDer.filter(v=>v!==null).length + estado.monoIzq.filter(v=>v!==null).length;
+  const monoCompleto = monoRespondidas === (puntosMonofilamento.length*2);
+
+  const monoBox = document.getElementById('mono-resultado');
+  let monoInterpretacion = '';
+  if(!monoCompleto){
+    monoBox.className = 'resultado-box';
+    monoBox.style.background = '#f4f6f7';
+    monoBox.style.color = '#555';
+    monoBox.innerHTML = `Puntos sin percepción: ${monoTotal}/8 <span class="detalle">(evaluación incompleta)</span>`;
+  } else if(monoTotal === 0){
+    monoBox.className = 'resultado-box res-verde';
+    monoInterpretacion = 'Sensibilidad protectora conservada';
+    monoBox.innerHTML = `Puntos sin percepción: ${monoTotal}/8 <div class="detalle">${monoInterpretacion}</div>`;
+  } else if(monoTotal <= 2){
+    monoBox.className = 'resultado-box res-amarillo';
+    monoInterpretacion = 'Pérdida leve de sensibilidad - vigilancia estrecha';
+    monoBox.innerHTML = `Puntos sin percepción: ${monoTotal}/8 <div class="detalle">${monoInterpretacion}</div>`;
+  } else {
+    monoBox.className = 'resultado-box res-rojo';
+    monoInterpretacion = 'Pérdida de sensibilidad protectora (LOPS) - alto riesgo de úlcera';
+    monoBox.innerHTML = `Puntos sin percepción: ${monoTotal}/8 <div class="detalle">≥3/8 puntos → ${monoInterpretacion}</div>`;
+  }
+
+  // --- Riesgo IWGDF ---
+  const factoresMayoresIdx = [0,1,2,3];
+  const factoresMenoresIdx = [4,5,6];
+  const tieneMayor = factoresMayoresIdx.some(i=>estado.factores[i]===true);
+  const numMenores = factoresMenoresIdx.filter(i=>estado.factores[i]===true).length;
+  const perdidaSensibilidad = monoCompleto && monoTotal >= 3;
+
+  let categoria = 0;
+  let categoriaTexto = '';
+  let colorClase = 'res-verde';
+
+  if(!monoCompleto){
+    categoriaTexto = 'Pendiente (complete monofilamento)';
+    colorClase = '';
+  } else if(tieneMayor && perdidaSensibilidad){
+    categoria = 3;
+    categoriaTexto = 'Categoría 3 (Alto riesgo) - LOPS + antecedente/EAP/deformidad';
+    colorClase = 'res-rojo';
+  } else if(perdidaSensibilidad){
+    categoria = 2;
+    categoriaTexto = 'Categoría 2 (Riesgo moderado) - LOPS aislada, o LOPS + EAP sin úlcera previa';
+    colorClase = 'res-naranja';
+  } else if(tieneMayor){
+    categoria = 2;
+    categoriaTexto = 'Categoría 2-3 (evaluar individualmente) - factor mayor presente sin LOPS';
+    colorClase = 'res-naranja';
+  } else if(numMenores > 0){
+    categoria = 1;
+    categoriaTexto = 'Categoría 1 (Riesgo bajo-moderado) - factores menores presentes';
+    colorClase = 'res-amarillo';
+  } else {
+    categoria = 0;
+    categoriaTexto = 'Categoría 0 (Riesgo bajo) - sin LOPS ni factores de riesgo mayores';
+    colorClase = 'res-verde';
+  }
+
+  const riesgoBox = document.getElementById('riesgo-resultado');
+  riesgoBox.className = 'resultado-box ' + colorClase;
+  if(colorClase===''){ riesgoBox.style.background='#f4f6f7'; riesgoBox.style.color='#555'; } else { riesgoBox.style.background=''; riesgoBox.style.color=''; }
+  riesgoBox.innerHTML = `Categoría de riesgo IWGDF: ${categoriaTexto}`;
+
+  // --- Resumen ---
+  document.getElementById('res-dn4').textContent = dn4Completo ? `${dn4Total}/10` : `${dn4Total}/10 (incompleto)`;
+  document.getElementById('res-dn4-int').textContent = dn4Completo ? dn4Interpretacion : 'Pendiente';
+  document.getElementById('res-mono').textContent = monoCompleto ? `${monoTotal}/8` : `${monoTotal}/8 (incompleto)`;
+  document.getElementById('res-mono-int').textContent = monoCompleto ? monoInterpretacion : 'Pendiente';
+  document.getElementById('res-riesgo').textContent = categoriaTexto.split(' - ')[0];
+  document.getElementById('res-riesgo-int').textContent = categoriaTexto.split(' - ')[1] || '-';
+
+  // --- Conducta sugerida ---
+  let conducta = [];
+  if(dn4Completo && dn4Total>=4){
+    conducta.push('Iniciar/ajustar manejo farmacológico de dolor neuropático (gabapentinoide o duloxetina, Grado A).');
+  } else if(dn4Completo){
+    conducta.push('Reevaluar diagnóstico diferencial de dolor en pie (descartar causa mecánica, vascular, B12, TSH).');
+  }
+  if(monoCompleto && monoTotal>=3){
+    conducta.push('LOPS confirmada: educar en autocuidado podológico, calzado adecuado, inspección diaria.');
+  }
+  if(categoria>=2){
+    conducta.push('Referir a podología/pie diabético según disponibilidad; control cada 3-6 meses.');
+  } else if(categoria===1){
+    conducta.push('Control de riesgo de pie cada 6-12 meses.');
+  } else if(categoria===0 && monoCompleto){
+    conducta.push('Control anual de screening de pie diabético.');
+  }
+  document.getElementById('conducta-sugerida').textContent = conducta.length ? conducta.join(' ') : 'Complete la evaluación para generar recomendación.';
+
+  // --- Hoja clínica aparte: sugerencia farmacológica según DN4 ---
+  const dosisDn4Texto = document.getElementById('dosis-dn4-texto');
+  const tablaDosisDn4 = document.getElementById('tabla-dosis-dn4');
+  if(!dn4Completo){
+    dosisDn4Texto.textContent = 'Complete el DN4 para generar sugerencia.';
+    tablaDosisDn4.style.display = 'none';
+  } else if(dn4Total >= 4){
+    dosisDn4Texto.textContent = `DN4 = ${dn4Total}/10 (positivo). Se sugiere iniciar manejo farmacológico de dolor neuropático (Grado A). Elegir según perfil del paciente:`;
+    tablaDosisDn4.style.display = '';
+  } else {
+    dosisDn4Texto.textContent = `DN4 = ${dn4Total}/10 (negativo). No se sugiere tratamiento específico de dolor neuropático; investigar otra causa de dolor en el pie (mecánica, vascular, déficit de B12, TSH).`;
+    tablaDosisDn4.style.display = 'none';
+  }
+
+  // --- Hoja clínica aparte: plan según riesgo IWGDF ---
+  const dosisRiesgoTexto = document.getElementById('dosis-riesgo-texto');
+  if(!monoCompleto){
+    dosisRiesgoTexto.textContent = 'Complete el monofilamento y los factores de riesgo para generar plan.';
+  } else if(categoria === 0){
+    dosisRiesgoTexto.innerHTML = 'Categoría 0: control anual de screening de pie. Educación en autocuidado (ver hoja de consejería).';
+  } else if(categoria === 1){
+    dosisRiesgoTexto.innerHTML = 'Categoría 1: control cada 6-12 meses. Reforzar autocuidado, calzado adecuado. Vigilar aparición de factores mayores.';
+  } else if(categoria === 2){
+    dosisRiesgoTexto.innerHTML = 'Categoría 2: control cada 3-6 meses. Referir a podología si está disponible. Considerar plantillas/calzado terapéutico. Evaluar pulsos periféricos e ITB si no se ha hecho.';
+  } else if(categoria === 3){
+    dosisRiesgoTexto.innerHTML = 'Categoría 3 (alto riesgo): control cada 1-3 meses. Referencia prioritaria a especialista en pie diabético/podología. Evaluación vascular (ITB, eco-doppler si disponible). Educación intensiva y calzado terapéutico obligatorio.';
+  }
+
+  // --- Datos de referencia interna ---
+  const nombreRef = document.getElementById('pNombre').value || '(sin nombre)';
+  const hcRef = document.getElementById('pHC').value || '(sin HC)';
+  const fechaRef = document.getElementById('pFecha').value || '(sin fecha)';
+  document.getElementById('datos-referencia-interna').textContent = `Paciente: ${nombreRef} | HC/Cédula: ${hcRef} | Fecha: ${fechaRef} | DN4: ${dn4Total}/10 | Monofilamento: ${monoTotal}/8 | Riesgo IWGDF: ${categoriaTexto.split(' - ')[0]}`;
+}
+
+function reiniciarTodo(){
+  if(confirm('¿Reiniciar todo el formulario? Se perderán los datos ingresados.')){
+    location.reload();
+  }
+}
+
+// Fecha por defecto: hoy
+document.getElementById('pFecha').valueAsDate = new Date();
+
+// Actualizar datos de referencia interna al editar campos del paciente
+['pNombre','pHC','pFecha'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcularTodo);
+});
+calcularTodo();
+</script>
+</body>
+</html>
